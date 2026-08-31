@@ -1,0 +1,25 @@
+[package]
+name = "waysdrop"
+version = "1.0.0"
+edition = "2021"
+description = "Official Waysdrop Partner API SDK for Rust"
+license = "MIT"
+readme = "README.md"
+
+[dependencies]
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+hmac = "0.12"
+sha2 = "0.10"
+subtle = "2"
+regex = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["rt", "macros"], optional = true }
+
+[features]
+default = ["async"]
+async = ["dep:tokio"]
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt", "macros"] }
