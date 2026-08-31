@@ -4,6 +4,8 @@ use subtle::ConstantTimeEq;
 
 type HmacSha256 = Hmac<Sha256>;
 
+use crate::types::WebhookEnvelope;
+
 pub fn verify_signature(raw_body: &[u8], signature_header: &str, api_key: &str) -> bool {
     if signature_header.is_empty() {
         return false;
@@ -17,7 +19,7 @@ pub fn verify_signature(raw_body: &[u8], signature_header: &str, api_key: &str) 
     expected.as_bytes().ct_eq(signature_header.as_bytes()).into()
 }
 
-pub fn parse_webhook(raw_body: &[u8]) -> Result<(String, serde_json::Value), String> {
+pub fn parse_webhook(raw_body: &[u8]) -> Result<WebhookEnvelope, String> {
     let payload: serde_json::Value =
         serde_json::from_slice(raw_body).map_err(|e| e.to_string())?;
     let event = payload
@@ -26,7 +28,7 @@ pub fn parse_webhook(raw_body: &[u8]) -> Result<(String, serde_json::Value), Str
         .ok_or_else(|| "invalid webhook payload: missing event".to_string())?
         .to_string();
     let data = payload.get("data").cloned().unwrap_or(serde_json::Value::Null);
-    Ok((event, data))
+    Ok(WebhookEnvelope { event, data })
 }
 
 mod hex {
@@ -51,8 +53,8 @@ mod tests {
         let key = fixture["apiKey"].as_str().unwrap();
         assert!(verify_signature(raw.as_bytes(), sig, key));
         assert!(!verify_signature(raw.as_bytes(), "bad", key));
-        let (event, data) = parse_webhook(raw.as_bytes()).unwrap();
-        assert_eq!(event, "p2p.delivery.created");
-        assert_eq!(data["trackingId"], "P2P-TEST-001");
+        let envelope = parse_webhook(raw.as_bytes()).unwrap();
+        assert_eq!(envelope.event, "p2p.delivery.created");
+        assert_eq!(envelope.data["trackingId"], "P2P-TEST-001");
     }
 }

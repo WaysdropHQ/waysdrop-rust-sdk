@@ -1,8 +1,15 @@
 use std::time::Duration;
 use serde_json::{json, Value};
 use std::collections::HashMap;
+use serde::de::DeserializeOwned;
 use reqwest::Client as HttpClient;
 use crate::error::{infer_base_url, validate_api_key, WaysdropError};
+use crate::types::{
+    decode_value, AccountSummary, CancelDeliveryResponse, CityLocation, ConvertCurrencyResponse,
+    CountryLocation, CreateDeliveryResponse, DeliveryDetail, DeliveryPackage, ExchangeRateResponse,
+    FleetType, ListDeliveriesResponse, MerchantWallet, PaymentCheckoutResponse, PricingResponse,
+    RouteDataResponse, StateLocation,
+};
 
 pub struct WaysdropClient {
     api_key: String,
@@ -50,19 +57,19 @@ impl WaysdropClient {
         })
     }
 
-    pub async fn get_account(&self) -> Result<Value, WaysdropError> {
-        self.get("/api/account", None).await
+    pub async fn get_account(&self) -> Result<AccountSummary, WaysdropError> {
+        self.get_decoded("/api/account", None).await
     }
 
-    pub async fn list_fleet_types(&self) -> Result<Value, WaysdropError> {
-        self.get("/api/fleet-types", None).await
+    pub async fn list_fleet_types(&self) -> Result<Vec<FleetType>, WaysdropError> {
+        self.get_decoded("/api/fleet-types", None).await
     }
 
     pub async fn list_countries(
         &self,
         search: Option<&str>,
         limit: Option<u32>,
-    ) -> Result<Value, WaysdropError> {
+    ) -> Result<Vec<CountryLocation>, WaysdropError> {
         let mut q = HashMap::new();
         if let Some(s) = search {
             q.insert("search".into(), s.to_string());
@@ -70,14 +77,14 @@ impl WaysdropClient {
         if let Some(l) = limit {
             q.insert("limit".into(), l.to_string());
         }
-        self.get("/api/countries", Some(q)).await
+        self.get_decoded("/api/countries", Some(q)).await
     }
 
     pub async fn list_states(
         &self,
         search: Option<&str>,
         limit: Option<u32>,
-    ) -> Result<Value, WaysdropError> {
+    ) -> Result<Vec<StateLocation>, WaysdropError> {
         let mut q = HashMap::new();
         if let Some(s) = search {
             q.insert("search".into(), s.to_string());
@@ -85,14 +92,14 @@ impl WaysdropClient {
         if let Some(l) = limit {
             q.insert("limit".into(), l.to_string());
         }
-        self.get("/api/states", Some(q)).await
+        self.get_decoded("/api/states", Some(q)).await
     }
 
     pub async fn list_cities(
         &self,
         search: Option<&str>,
         limit: Option<u32>,
-    ) -> Result<Value, WaysdropError> {
+    ) -> Result<Vec<CityLocation>, WaysdropError> {
         let mut q = HashMap::new();
         if let Some(s) = search {
             q.insert("search".into(), s.to_string());
@@ -100,16 +107,28 @@ impl WaysdropClient {
         if let Some(l) = limit {
             q.insert("limit".into(), l.to_string());
         }
-        self.get("/api/cities", Some(q)).await
+        self.get_decoded("/api/cities", Some(q)).await
     }
 
-    pub async fn get_route(&self, origin: Value, destination: Value) -> Result<Value, WaysdropError> {
-        self.post("/api/route", json!({ "origin": origin, "destination": destination }), None)
-            .await
+    pub async fn get_route(
+        &self,
+        origin: Value,
+        destination: Value,
+    ) -> Result<RouteDataResponse, WaysdropError> {
+        self.post_decoded(
+            "/api/route",
+            json!({ "origin": origin, "destination": destination }),
+            None,
+        )
+        .await
     }
 
-    pub async fn get_pricing(&self, body: Value, currency: Option<&str>) -> Result<Value, WaysdropError> {
-        self.post("/api/pricing", self.with_currency(body, currency), currency)
+    pub async fn get_pricing(
+        &self,
+        body: Value,
+        currency: Option<&str>,
+    ) -> Result<PricingResponse, WaysdropError> {
+        self.post_decoded("/api/pricing", self.with_currency(body, currency), currency)
             .await
     }
 
@@ -117,22 +136,29 @@ impl WaysdropClient {
         &self,
         body: Value,
         currency: Option<&str>,
-    ) -> Result<Value, WaysdropError> {
-        self.post("/api/request", self.with_currency(body, currency), currency)
+    ) -> Result<CreateDeliveryResponse, WaysdropError> {
+        self.post_decoded("/api/request", self.with_currency(body, currency), currency)
             .await
     }
 
-    pub async fn cancel_delivery_request(&self, delivery_id: &str) -> Result<Value, WaysdropError> {
-        self.post(&format!("/api/request/{delivery_id}/cancel"), json!({}), None)
-            .await
+    pub async fn cancel_delivery_request(
+        &self,
+        delivery_id: &str,
+    ) -> Result<CancelDeliveryResponse, WaysdropError> {
+        self.post_decoded(
+            &format!("/api/request/{delivery_id}/cancel"),
+            json!({}),
+            None,
+        )
+        .await
     }
 
     pub async fn create_or_update_package(
         &self,
         body: Value,
         currency: Option<&str>,
-    ) -> Result<Value, WaysdropError> {
-        self.post("/api/package", self.with_currency(body, currency), currency)
+    ) -> Result<DeliveryPackage, WaysdropError> {
+        self.post_decoded("/api/package", self.with_currency(body, currency), currency)
             .await
     }
 
@@ -142,28 +168,32 @@ impl WaysdropClient {
         Ok(())
     }
 
-    pub async fn list_packages(&self, currency: Option<&str>) -> Result<Value, WaysdropError> {
-        self.get("/api/packages", self.currency_query(currency)).await
+    pub async fn list_packages(&self, currency: Option<&str>) -> Result<Vec<DeliveryPackage>, WaysdropError> {
+        self.get_decoded("/api/packages", self.currency_query(currency)).await
     }
 
-    pub async fn get_wallet(&self, currency: Option<&str>) -> Result<Value, WaysdropError> {
-        self.get("/api/wallet", self.currency_query(currency)).await
+    pub async fn get_wallet(&self, currency: Option<&str>) -> Result<MerchantWallet, WaysdropError> {
+        self.get_decoded("/api/wallet", self.currency_query(currency)).await
     }
 
     pub async fn create_payment_checkout(
         &self,
         body: Value,
         currency: Option<&str>,
-    ) -> Result<Value, WaysdropError> {
-        self.post("/api/payments/checkout", self.with_currency(body, currency), currency)
-            .await
+    ) -> Result<PaymentCheckoutResponse, WaysdropError> {
+        self.post_decoded(
+            "/api/payments/checkout",
+            self.with_currency(body, currency),
+            currency,
+        )
+        .await
     }
 
-    pub async fn get_exchange_rate(&self, from: &str, to: &str) -> Result<Value, WaysdropError> {
+    pub async fn get_exchange_rate(&self, from: &str, to: &str) -> Result<ExchangeRateResponse, WaysdropError> {
         let mut q = HashMap::new();
         q.insert("from".into(), from.to_string());
         q.insert("to".into(), to.to_string());
-        self.get("/api/exchange-rate", Some(q)).await
+        self.get_decoded("/api/exchange-rate", Some(q)).await
     }
 
     pub async fn convert_currency(
@@ -171,24 +201,48 @@ impl WaysdropClient {
         amount: f64,
         from: &str,
         to: &str,
-    ) -> Result<Value, WaysdropError> {
+    ) -> Result<ConvertCurrencyResponse, WaysdropError> {
         let mut q = HashMap::new();
         q.insert("amount".into(), amount.to_string());
         q.insert("from".into(), from.to_string());
         q.insert("to".into(), to.to_string());
-        self.get("/api/convert", Some(q)).await
+        self.get_decoded("/api/convert", Some(q)).await
     }
 
-    pub async fn list_deliveries(&self, params: HashMap<String, String>) -> Result<Value, WaysdropError> {
-        self.get("/api/deliveries", Some(params)).await
+    pub async fn list_deliveries(
+        &self,
+        params: HashMap<String, String>,
+    ) -> Result<ListDeliveriesResponse, WaysdropError> {
+        self.get_decoded("/api/deliveries", Some(params)).await
     }
 
-    pub async fn get_delivery(&self, delivery_id: &str, currency: Option<&str>) -> Result<Value, WaysdropError> {
-        self.get(
+    pub async fn get_delivery(
+        &self,
+        delivery_id: &str,
+        currency: Option<&str>,
+    ) -> Result<DeliveryDetail, WaysdropError> {
+        self.get_decoded(
             &format!("/api/deliveries/{delivery_id}"),
             self.currency_query(currency),
         )
         .await
+    }
+
+    async fn get_decoded<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        query: Option<HashMap<String, String>>,
+    ) -> Result<T, WaysdropError> {
+        decode_value(self.get(path, query).await?)
+    }
+
+    async fn post_decoded<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        body: Value,
+        currency: Option<&str>,
+    ) -> Result<T, WaysdropError> {
+        decode_value(self.post(path, body, currency).await?)
     }
 
     async fn get(
