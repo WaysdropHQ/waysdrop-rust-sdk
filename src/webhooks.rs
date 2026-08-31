@@ -44,10 +44,10 @@ mod tests {
 
     #[test]
     fn verify_and_parse() {
-        let fixture: serde_json::Value = serde_json::from_str(
-            &fs::read_to_string("../waysdrop-api-spec/fixtures/signature.json").unwrap(),
-        )
-        .unwrap();
+        let fixture_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/signature.json");
+        let fixture: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(fixture_path).unwrap()).unwrap();
         let raw = fixture["rawBody"].as_str().unwrap();
         let sig = fixture["signature"].as_str().unwrap();
         let key = fixture["apiKey"].as_str().unwrap();

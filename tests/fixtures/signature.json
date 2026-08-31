@@ -1,0 +1,16 @@
+{
+    "apiKey": "wsp_staging_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "payload": {
+        "event": "p2p.delivery.created",
+        "data": {
+            "status": "REQUEST_CREATED",
+            "trackingId": "P2P-TEST-001",
+            "deliveryId": "550e8400-e29b-41d4-a716-446655440000",
+            "p2pDeliveryId": "660e8400-e29b-41d4-a716-446655440001"
+        }
+    },
+    "rawBody": "{\"event\":\"p2p.delivery.created\",\"data\":{\"status\":\"REQUEST_CREATED\",\"trackingId\":\"P2P-TEST-001\",\"deliveryId\":\"550e8400-e29b-41d4-a716-446655440000\",\"p2pDeliveryId\":\"660e8400-e29b-41d4-a716-446655440001\"}}",
+    "signature": "7f180019583a154433a360d5f4ee6e3470e78c01e94c6879783641c024c28af3",
+    "algorithm": "HMAC-SHA256",
+    "signInput": "JSON.stringify(payload) using the exact raw body bytes"
+}

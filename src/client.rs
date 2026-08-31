@@ -344,10 +344,10 @@ mod tests {
 
     #[test]
     fn validate_key() {
-        let fixture: Value = serde_json::from_str(
-            &std::fs::read_to_string("../waysdrop-api-spec/fixtures/signature.json").unwrap(),
-        )
-        .unwrap();
+        let fixture_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/signature.json");
+        let fixture: Value =
+            serde_json::from_str(&std::fs::read_to_string(fixture_path).unwrap()).unwrap();
         validate_api_key(fixture["apiKey"].as_str().unwrap()).unwrap();
     }
 }
