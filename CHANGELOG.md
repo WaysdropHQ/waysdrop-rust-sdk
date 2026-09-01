@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2
+
+- Comprehensive README with full API reference and examples
+
 ## 1.0.1
 
 - Fix CI tests by vendoring signature fixture inside the crate
