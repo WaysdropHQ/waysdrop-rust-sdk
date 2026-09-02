@@ -1,0 +1,9 @@
+{
+    "code_verifier": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1JWDk8Z8Y",
+    "code_challenge": "Fn_XcfGbv5WpxFvWXee9ZhJAI2oDHG1uD6k09UjQcwU",
+    "clientId": "wdo_staging_a1b2c3d4e5f6789012345678901234ab",
+    "redirectUri": "https://example.com/oauth/callback",
+    "discovery": {
+        "authorization_endpoint": "https://staging-api.waysdrop.com/oauth/authorize"
+    }
+}

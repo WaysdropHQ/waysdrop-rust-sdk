@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0
+
+- OAuth module `waysdrop::oauth` — `OAuthClient`, PKCE, token exchange, userinfo
+
 ## 1.0.2
 
 - Comprehensive README with full API reference and examples
