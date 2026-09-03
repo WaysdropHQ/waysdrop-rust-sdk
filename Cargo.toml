@@ -1,6 +1,6 @@
 [package]
 name = "waysdrop"
-version = "1.1.0"
+version = "1.2.0"
 edition = "2021"
 description = "Official Waysdrop Partner API SDK for Rust"
 license = "MIT"
@@ -17,6 +17,7 @@ regex = "1"
 thiserror = "2"
 base64 = "0.22"
 url = "2"
+percent-encoding = "2"
 rand = "0.8"
 tokio = { version = "1", features = ["rt", "macros"], optional = true }
 

@@ -1,10 +1,32 @@
 # waysdrop (Rust crate)
 
-Official Waysdrop **Partner API** SDK for Rust (async, Tokio).
+Official Waysdrop SDK for Rust (async, Tokio).
+
+Partner API (`/api/*`), webhook helpers, and **OAuth** (Sign in with Waysdrop) in module `waysdrop::oauth`.
 
 ```bash
 cargo add waysdrop
 ```
+
+## Authentication
+
+API keys are sent as the `api-key` header.
+
+| Key type | Prefix                                        | Default base URL                                                                |
+| -------- | --------------------------------------------- | ------------------------------------------------------------------------------- |
+| Secret   | `wsp_live_` / `wsp_staging_` + 64 hex         | staging → `https://staging-api.waysdrop.com`, live → `https://api.waysdrop.com` |
+| Public   | `wsp_pub_live_` / `wsp_pub_staging_` + 64 hex | same                                                                            |
+
+```rust
+use waysdrop::{infer_key_type, validate_api_key, ApiKeyType};
+
+validate_api_key("wsp_staging_...")?;
+let kind = infer_key_type("wsp_pub_live_...")?; // ApiKeyType::Public
+```
+
+### Public API keys (v1.2+)
+
+Public keys work in the browser on quote/geo and payment routes (configure **allowed origins** in the dashboard). Deliveries, wallet, and packages require the **secret** key on your backend.
 
 ## Client
 
@@ -25,7 +47,7 @@ async fn main() -> Result<(), waysdrop::WaysdropError> {
 }
 ```
 
-`wsp_staging_*` → staging API; `wsp_live_*` → production. Errors are `WaysdropError`.
+Errors are `WaysdropError`.
 
 ---
 
@@ -88,10 +110,13 @@ let pricing = client.get_pricing(
 
 ### Wallet & payments
 
-| Method                                    | HTTP                          | Returns                   |
-| ----------------------------------------- | ----------------------------- | ------------------------- |
-| `get_wallet(currency)`                    | `GET /api/wallet`             | `MerchantWallet`          |
-| `create_payment_checkout(body, currency)` | `POST /api/payments/checkout` | `PaymentCheckoutResponse` |
+| Method                                    | HTTP                                            | Returns                   |
+| ----------------------------------------- | ----------------------------------------------- | ------------------------- |
+| `get_wallet(currency)`                    | `GET /api/wallet`                               | `MerchantWallet`          |
+| `create_payment_checkout(body, currency)` | `POST /api/payments/checkout`                   | `PaymentCheckoutResponse` |
+| `get_payment_by_external_reference(ref)`  | `GET /api/payments/by-external-reference/{ref}` | deposit summary           |
+
+Include `externalReference` in checkout / delivery bodies for idempotent reconciliation.
 
 ### FX
 
@@ -125,6 +150,49 @@ let envelope = parse_webhook(raw_body).expect("valid json");
 ## Types
 
 Exported from the crate root: `AccountSummary`, `PricingResponse`, `DeliveryDetail`, `WebhookEnvelope`, etc. See `src/types.rs`.
+
+---
+
+## OAuth (Sign in with Waysdrop)
+
+Module `waysdrop::oauth`. Client IDs: `wdo_live_<32 hex>` / `wdo_staging_<32 hex>`.
+
+| Method                                                 | Description          |
+| ------------------------------------------------------ | -------------------- |
+| `OAuthClient::get_discovery()`                         | OpenID configuration |
+| `OAuthClient::build_authorize_url(scope, state, pkce)` | Authorization URL    |
+| `OAuthClient::exchange_code(code, code_verifier)`      | Code → tokens        |
+| `OAuthClient::refresh_token(refresh_token)`            | Refresh access token |
+| `OAuthClient::revoke_token(token)`                     | Revoke token         |
+| `OAuthClient::get_user_info(access_token)`             | User profile         |
+
+PKCE: `generate_pkce_pair()`, `generate_code_verifier()`, `generate_code_challenge()`.
+
+```rust
+use waysdrop::oauth::{OAuthClient, OAuthClientOptions, generate_pkce_pair};
+
+let mut oauth = OAuthClient::new(OAuthClientOptions {
+    client_id: "wdo_staging_…".into(),
+    client_secret: Some("wdos_…".into()), // confidential apps only
+    redirect_uri: "https://example.com/oauth/callback".into(),
+    issuer: None,
+    timeout_ms: None,
+})?;
+
+let pkce = generate_pkce_pair();
+let authorize_url = oauth.build_authorize_url(
+    Some("openid profile email"),
+    Some("csrf"),
+    Some(&pkce),
+);
+// Redirect → on callback:
+let tokens = oauth.exchange_code(&code, Some(&pkce.code_verifier)).await?;
+let user = oauth.get_user_info(&tokens.access_token).await?;
+```
+
+OAuth responses are raw JSON. Errors are `OAuthError`.
+
+See [OAuth docs](https://docs.waysdrop.com/get-started/oauth).
 
 ---
 

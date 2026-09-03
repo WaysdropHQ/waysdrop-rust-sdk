@@ -1,4 +1,5 @@
 use std::time::Duration;
+use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use serde::de::DeserializeOwned;
@@ -224,6 +225,18 @@ impl WaysdropClient {
         self.get_decoded(
             &format!("/api/deliveries/{delivery_id}"),
             self.currency_query(currency),
+        )
+        .await
+    }
+
+    pub async fn get_payment_by_external_reference(
+        &self,
+        external_reference: &str,
+    ) -> Result<serde_json::Value, WaysdropError> {
+        let encoded = utf8_percent_encode(external_reference, NON_ALPHANUMERIC).to_string();
+        self.get_decoded(
+            &format!("/api/payments/by-external-reference/{encoded}"),
+            None,
         )
         .await
     }
